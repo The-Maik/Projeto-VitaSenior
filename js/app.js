@@ -1,6 +1,6 @@
 /**
- * VitaSênior v0.3.0 — Lógica do App
- * Navegação, questionário de saúde, geração de treino, lista de exercícios e cronômetro.
+ * VitaSênior v0.4.0 — Lógica do App
+ * Navegação, questionário de saúde, geração de treino e cronômetro.
  * Depende de: exercises.js (variável global EXERCICIOS)
  */
 
@@ -12,6 +12,11 @@ let categoriaAtual = '';
 let filtroAtual = 'todos';
 let etapaQuestionario = 0;
 let detalheOrigem = 'lista';
+let exercicioAtualId = ''; // ID do exercício sendo visualizado
+let exercicioAtualCat = ''; // Categoria do exercício sendo visualizado
+
+// Exercícios concluídos (Set de strings 'categoria:id')
+let exerciciosConcluidos = new Set();
 
 let respostas = {
   dor: [],
@@ -194,6 +199,7 @@ function finalizarQuestionario() {
 // GERAÇÃO DE TREINO PERSONALIZADO
 // ==========================================
 function gerarPlano() {
+  // Reunir todos os exercícios
   const todosExercicios = [];
   Object.keys(EXERCICIOS).forEach(cat => {
     EXERCICIOS[cat].itens.forEach(ex => {
@@ -205,27 +211,34 @@ function gerarPlano() {
   const areasDeDor = respostas.dor.filter(p => p !== 'nenhuma');
   const objetivos = respostas.objetivos;
 
+  // Passo 1: Filtrar exercícios contraindicados
   let seguros = todosExercicios.filter(ex => {
     return !ex.contraindicacoes.some(c => limitacoes.includes(c));
   });
 
+  // Passo 2: Pontuar por relevância
   seguros.forEach(ex => {
     let pontuacao = 0;
+    // +3 se o exercício atinge uma área de dor do usuário
     if (areasDeDor.length > 0 && ex.areasDeDor.some(p => areasDeDor.includes(p))) {
       pontuacao += 3;
     }
+    // +2 se o exercício corresponde aos objetivos do usuário
     if (objetivos.some(o => ex.objetivos.includes(o))) {
       pontuacao += 2;
     }
+    // +1 bônus para exercícios fáceis (mais seguros para iniciantes)
     if (ex.dificuldade === 'Fácil') {
       pontuacao += 1;
     }
     ex.pontuacao = pontuacao;
   });
 
+  // Passo 3: Ordenar por pontuação e pegar os 6 melhores
   seguros.sort((a, b) => b.pontuacao - a.pontuacao);
   const plano = seguros.slice(0, 6);
 
+  // Passo 4: Renderizar o plano
   const container = document.getElementById('plan-content');
   const rotuloPerfil = perfilUsuario === 'self' ? 'seu' : 'do(a) praticante';
   const textoLimitacoes = limitacoes.length
@@ -260,19 +273,34 @@ function gerarPlano() {
         Nenhum exercício do nosso catálogo atual é totalmente seguro para o seu perfil.</p>
       </div>`;
   } else {
+    const concluidosPlano = plano.filter(ex => exerciciosConcluidos.has(ex.cat + ':' + ex.id)).length;
     html += `<h2 style="margin:20px 0 12px">Exercícios recomendados (${plano.length}):</h2>`;
+    html += `<div class="progress-resumo">
+      <div class="progress-resumo-bar">
+        <div class="progress-resumo-fill" style="width:${plano.length > 0 ? (concluidosPlano / plano.length) * 100 : 0}%"></div>
+      </div>
+      <span class="progress-resumo-texto">${concluidosPlano} de ${plano.length} concluídos</span>
+    </div>`;
+
+    if (concluidosPlano === plano.length && plano.length > 0) {
+      html += `<div class="treino-completo-banner">🎉 Parabéns! Você completou todo o treino!</div>`;
+    }
 
     plano.forEach((ex, i) => {
       const classeInsignia = ex.dificuldade === 'Fácil' ? 'badge-easy' : 'badge-medium';
       const tituloCategoria = EXERCICIOS[ex.cat].titulo;
+      const chaveConcluido = ex.cat + ':' + ex.id;
+      const foiConcluido = exerciciosConcluidos.has(chaveConcluido);
+      const classeConcluido = foiConcluido ? ' plan-card-concluido' : '';
       html += `
-        <div class="plan-card">
+        <div class="plan-card${classeConcluido}">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-            <span style="font-size:32px">${ex.emoji}</span>
+            <span style="font-size:32px">${foiConcluido ? '✅' : ex.emoji}</span>
             <div>
               <h3>${i + 1}. ${ex.nome}</h3>
               <p style="font-size:14px;margin:0">${tituloCategoria}</p>
             </div>
+            ${foiConcluido ? '<span class="badge-concluido">Concluído</span>' : ''}
           </div>
           <div class="card-meta">
             <span class="badge ${classeInsignia}">${ex.dificuldade}</span>
@@ -280,8 +308,8 @@ function gerarPlano() {
             <span class="duration">🔄 ${ex.series} séries</span>
             <span class="duration">😴 ${ex.descanso}s descanso</span>
           </div>
-          <button class="btn-view" onclick="abrirDetalheDoPlano('${ex.cat}','${ex.id}')" style="margin-top:8px">
-            Ver exercício
+          <button class="btn-view${foiConcluido ? ' btn-view-concluido' : ''}" onclick="abrirDetalheDoPlano('${ex.cat}','${ex.id}')" style="margin-top:8px">
+            ${foiConcluido ? '🔄 Refazer exercício' : 'Ver exercício'}
           </button>
         </div>`;
     });
@@ -292,7 +320,7 @@ function gerarPlano() {
       <span class="emoji">🏠</span>
       <span class="label">Explorar todos os exercícios</span>
     </button>
-    <div class="version-tag" style="margin:20px 0">VitaSênior v0.3.0 — Projeto universitário de Impacto Social</div>`;
+    <div class="version-tag" style="margin:20px 0">VitaSênior v0.4.0 — Projeto universitário de Impacto Social</div>`;
 
   container.innerHTML = html;
 }
@@ -322,23 +350,53 @@ function renderizarCartoes(cat) {
   const grade = document.getElementById('cards-grid');
   grade.innerHTML = '';
 
+  // Progresso da categoria
+  const totalCategoria = EXERCICIOS[cat].itens.length;
+  const concluidosCategoria = EXERCICIOS[cat].itens.filter(ex => exerciciosConcluidos.has(cat + ':' + ex.id)).length;
+
+  // Inserir barra de progresso da categoria antes dos cards
+  const progressoDiv = document.createElement('div');
+  progressoDiv.className = 'progress-resumo';
+  progressoDiv.style.gridColumn = '1 / -1';
+  progressoDiv.innerHTML = `
+    <div class="progress-resumo-bar">
+      <div class="progress-resumo-fill" style="width:${totalCategoria > 0 ? (concluidosCategoria / totalCategoria) * 100 : 0}%"></div>
+    </div>
+    <span class="progress-resumo-texto">${concluidosCategoria} de ${totalCategoria} concluídos</span>
+  `;
+  grade.appendChild(progressoDiv);
+
+  if (concluidosCategoria === totalCategoria && totalCategoria > 0) {
+    const banner = document.createElement('div');
+    banner.className = 'treino-completo-banner';
+    banner.style.gridColumn = '1 / -1';
+    banner.textContent = '🎉 Parabéns! Todos os exercícios desta categoria foram concluídos!';
+    grade.appendChild(banner);
+  }
+
   EXERCICIOS[cat].itens.forEach(ex => {
     const deveEsconder = filtroAtual !== 'todos' && ex.dificuldade.toLowerCase() !== filtroAtual;
     const classeInsignia = ex.dificuldade === 'Fácil' ? 'badge-easy' : 'badge-medium';
+    const chaveConcluido = cat + ':' + ex.id;
+    const foiConcluido = exerciciosConcluidos.has(chaveConcluido);
 
     const cartao = document.createElement('div');
-    cartao.className = 'card';
+    cartao.className = 'card' + (foiConcluido ? ' card-concluido' : '');
     cartao.dataset.difficulty = ex.dificuldade.toLowerCase();
     if (deveEsconder) cartao.style.display = 'none';
 
     cartao.innerHTML = `
+      ${foiConcluido ? '<div class="card-concluido-overlay"><span>✅</span></div>' : ''}
       <span class="card-emoji">${ex.emoji}</span>
       <h3>${ex.nome}</h3>
       <div class="card-meta">
         <span class="badge ${classeInsignia}">${ex.dificuldade}</span>
         <span class="duration">⏱ ${ex.duracao}</span>
+        ${foiConcluido ? '<span class="badge-concluido">Concluído</span>' : ''}
       </div>
-      <button class="btn-view" onclick="abrirDetalhe('${cat}','${ex.id}','lista')">Ver exercício</button>`;
+      <button class="btn-view${foiConcluido ? ' btn-view-concluido' : ''}" onclick="abrirDetalhe('${cat}','${ex.id}','lista')">
+        ${foiConcluido ? '🔄 Refazer exercício' : 'Ver exercício'}
+      </button>`;
 
     grade.appendChild(cartao);
   });
@@ -360,8 +418,13 @@ function filtrarDificuldade(nivel, btn) {
 // ==========================================
 function abrirDetalhe(cat, id, origem) {
   detalheOrigem = origem || 'lista';
+  exercicioAtualId = id;
+  exercicioAtualCat = cat;
   const ex = EXERCICIOS[cat].itens.find(e => e.id === id);
   if (!ex) return;
+
+  const chaveConcluido = cat + ':' + id;
+  const jaFoiConcluido = exerciciosConcluidos.has(chaveConcluido);
 
   document.getElementById('detail-header-title').textContent = ex.nome;
   const classeInsignia = ex.dificuldade === 'Fácil' ? 'badge-easy' : 'badge-medium';
@@ -376,6 +439,7 @@ function abrirDetalhe(cat, id, origem) {
       <span class="badge ${classeInsignia}">${ex.dificuldade}</span>
       <span class="duration">⏱ ${ex.duracao}</span>
       <span class="duration">🔄 ${ex.series} séries</span>
+      ${jaFoiConcluido ? '<span class="badge-concluido">✅ Já concluído</span>' : ''}
     </div>
 
     <div class="section-block">
@@ -409,7 +473,9 @@ function abrirDetalhe(cat, id, origem) {
       <p>${ex.fonte}</p>
     </div>
 
-    <button class="btn-done" id="btn-done" onclick="marcarConcluido(this)">✅ Concluí esse exercício!</button>`;
+    <button class="btn-done" id="btn-done" onclick="marcarConcluido(this)">
+      ${jaFoiConcluido ? '🔄 Refazer e concluir novamente' : '✅ Concluí esse exercício!'}
+    </button>`;
 
   mostrarTela('detail');
 }
@@ -515,11 +581,30 @@ function pararCronometro() {
 // CONCLUSÃO DO EXERCÍCIO
 // ==========================================
 function marcarConcluido(btn) {
+  // Registrar exercício como concluído
+  const chaveConcluido = exercicioAtualCat + ':' + exercicioAtualId;
+  exerciciosConcluidos.add(chaveConcluido);
+
+  // Feedback visual no botão
   btn.classList.add('completed');
   btn.textContent = '🎉 Muito bem! Exercício concluído!';
   btn.disabled = true;
 
+  // Mostrar toast
   const notificacao = document.getElementById('toast');
   notificacao.classList.add('show');
-  setTimeout(() => notificacao.classList.remove('show'), 2500);
+
+  // Após 1.5s, voltar à lista e mostrar progresso atualizado
+  setTimeout(() => {
+    notificacao.classList.remove('show');
+    pararCronometro();
+
+    if (detalheOrigem === 'plano') {
+      gerarPlano(); // Reconstruir plano com status atualizado
+      mostrarTela('plan');
+    } else {
+      renderizarCartoes(categoriaAtual);
+      mostrarTela('list');
+    }
+  }, 1500);
 }

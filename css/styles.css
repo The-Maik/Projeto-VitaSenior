@@ -1,5 +1,5 @@
 /* ======================================
-   VitaSênior v0.0.1 — Folha de Estilos
+   VitaSênior v0.4.0 — Folha de Estilos
    ====================================== */
 
 /* === RESET E VARIÁVEIS === */
@@ -754,4 +754,104 @@ h1, h2, h3 {
 
 .toast.show {
   transform: translateX(-50%) translateY(0);
+}
+
+/* === CARD CONCLUÍDO === */
+.card-concluido {
+  position: relative;
+  border-color: var(--verde-claro) !important;
+  background: #f0f7f3;
+}
+
+.card-concluido::before {
+  opacity: 1 !important;
+  background: var(--verde) !important;
+}
+
+.card-concluido-overlay {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 24px;
+  z-index: 2;
+  animation: pulsar 2s ease-in-out infinite;
+}
+
+.card-concluido h3 {
+  color: var(--verde) !important;
+}
+
+/* === BADGE CONCLUÍDO === */
+.badge-concluido {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #2e7d32, #66bb6a);
+  color: var(--branco);
+  animation: fadeIn 0.4s ease;
+}
+
+/* === BOTÃO VER EXERCÍCIO (concluído) === */
+.btn-view-concluido {
+  background: linear-gradient(135deg, #888, #aaa) !important;
+}
+
+.btn-view-concluido:hover {
+  background: linear-gradient(135deg, var(--verde), var(--verde-claro)) !important;
+}
+
+/* === PLANO CARD CONCLUÍDO === */
+.plan-card-concluido {
+  border-left-color: #2e7d32 !important;
+  background: #f0f7f3;
+  position: relative;
+}
+
+.plan-card-concluido h3 {
+  text-decoration: line-through;
+  color: var(--verde);
+}
+
+/* === BARRA DE PROGRESSO RESUMO === */
+.progress-resumo {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.progress-resumo-bar {
+  height: 10px;
+  background: #e0e0e0;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-resumo-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--verde), var(--verde-claro));
+  border-radius: 5px;
+  transition: width 0.6s ease;
+}
+
+.progress-resumo-texto {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--verde);
+}
+
+/* === BANNER TREINO COMPLETO === */
+.treino-completo-banner {
+  background: linear-gradient(135deg, #2e7d32, #66bb6a);
+  color: var(--branco);
+  padding: 20px;
+  border-radius: var(--raio);
+  text-align: center;
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 20px;
+  font-family: 'Nunito', sans-serif;
+  animation: pulsar 2s ease-in-out infinite;
+  box-shadow: 0 4px 20px rgba(46, 125, 50, 0.3);
 }
