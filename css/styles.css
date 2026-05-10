@@ -1,5 +1,5 @@
 /* ======================================
-   VitaSênior v0.2.0 — Folha de Estilos
+   VitaSênior v0.0.1 — Folha de Estilos
    ====================================== */
 
 /* === RESET E VARIÁVEIS === */
@@ -123,7 +123,7 @@ h1, h2, h3 {
 .logo-area {
   margin-bottom: 32px;
   animation: flutuar 3s ease-in-out infinite;
-  pointer-events: none;
+  pointer-events: none; /* CORREÇÃO: evita que o logo bloqueie cliques abaixo */
 }
 
 .logo-icon {
@@ -176,7 +176,7 @@ h1, h2, h3 {
   width: 100%;
   max-width: 400px;
   position: relative;
-  z-index: 2;
+  z-index: 2; /* CORREÇÃO: garante que botões fiquem acima do logo animado */
 }
 
 .cat-btn {
@@ -361,14 +361,107 @@ h1, h2, h3 {
   transition: width 0.4s ease;
 }
 
-/* === CONTAINERS === */
-.list-container {
+/* === TELA DE LISTA === */
+.list-container,
+.detail-container {
   padding: 20px;
   max-width: 720px;
   margin: 0 auto;
 }
 
-/* === BADGES E META === */
+.filter-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  padding: 10px 22px;
+  border-radius: 30px;
+  border: 2px solid var(--verde-claro);
+  background: var(--branco);
+  color: var(--texto);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Nunito', sans-serif;
+  min-height: 48px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.filter-btn.active,
+.filter-btn:hover {
+  background: var(--verde);
+  color: var(--branco);
+  border-color: var(--verde);
+}
+
+.filter-btn:active {
+  transform: scale(0.95);
+}
+
+/* === CARTÕES DE EXERCÍCIO === */
+.cards-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 560px) {
+  .cards-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.card {
+  background: var(--branco);
+  border-radius: var(--raio);
+  padding: 24px;
+  box-shadow: var(--sombra);
+  transition: all 0.25s;
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--verde);
+  border-radius: 4px 0 0 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 30px rgba(74, 124, 89, 0.15);
+  border-color: var(--verde-claro);
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+.card-emoji {
+  font-size: 40px;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.card h3 {
+  font-size: 20px;
+  margin-bottom: 8px;
+  color: var(--texto);
+  font-family: 'Playfair Display', serif;
+}
+
 .card-meta {
   display: flex;
   gap: 10px;
@@ -400,7 +493,59 @@ h1, h2, h3 {
   color: #888;
 }
 
-/* === BLOCOS DE SEÇÃO === */
+.btn-view {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--verde), var(--verde-claro));
+  color: var(--branco);
+  border: none;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Nunito', sans-serif;
+  min-height: 48px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-view:hover {
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+
+.btn-view:active {
+  transform: scale(0.97);
+}
+
+/* === TELA DE DETALHE === */
+.detail-container {
+  padding-bottom: 40px;
+}
+
+.detail-emoji {
+  font-size: 56px;
+  text-align: center;
+  display: block;
+  margin: 16px 0;
+}
+
+.detail-container > h1 {
+  text-align: center;
+  font-size: 28px;
+  margin-bottom: 12px;
+  color: var(--verde);
+}
+
+.detail-meta {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+
 .section-block {
   background: var(--branco);
   border-radius: var(--raio);
@@ -417,6 +562,33 @@ h1, h2, h3 {
   gap: 10px;
 }
 
+.section-block ol {
+  padding-left: 24px;
+}
+
+.section-block ol li {
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
+.section-block ul {
+  list-style: none;
+  padding: 0;
+}
+
+.section-block ul li {
+  padding: 6px 0 6px 24px;
+  position: relative;
+}
+
+.section-block ul li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--verde);
+  font-weight: 700;
+}
+
 .warning-block {
   background: #fff8e1;
   border-left: 4px solid #f9a825;
@@ -424,6 +596,109 @@ h1, h2, h3 {
 
 .warning-block h2 {
   color: #e65100;
+}
+
+.source-block {
+  background: #f0f7f3;
+  border-left: 4px solid var(--verde);
+}
+
+.source-block a {
+  color: var(--verde);
+  word-break: break-all;
+}
+
+/* === BOTÃO DE CONCLUÍDO === */
+.btn-done {
+  display: block;
+  width: 100%;
+  padding: 18px;
+  background: linear-gradient(135deg, var(--verde), var(--verde-claro));
+  color: var(--branco);
+  border: none;
+  border-radius: var(--raio);
+  font-size: 20px;
+  font-weight: 800;
+  cursor: pointer;
+  margin-top: 24px;
+  transition: all 0.3s;
+  font-family: 'Nunito', sans-serif;
+  min-height: 56px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-done:hover {
+  transform: scale(1.03);
+  box-shadow: 0 6px 24px rgba(74, 124, 89, 0.3);
+}
+
+.btn-done:active {
+  transform: scale(0.97);
+}
+
+.btn-done.completed {
+  background: linear-gradient(135deg, #2e7d32, #66bb6a);
+}
+
+/* === CRONÔMETRO === */
+.timer-box {
+  background: var(--branco);
+  border-radius: var(--raio);
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: var(--sombra);
+  text-align: center;
+}
+
+.timer-display {
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--verde);
+  margin: 16px 0;
+  font-family: 'Nunito', sans-serif;
+}
+
+.timer-controls {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.timer-btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 48px;
+  font-family: 'Nunito', sans-serif;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.timer-btn.play {
+  background: var(--verde);
+  color: var(--branco);
+}
+
+.timer-btn.pause {
+  background: #f9a825;
+  color: var(--branco);
+}
+
+.timer-btn.stop {
+  background: #e53935;
+  color: var(--branco);
+}
+
+.timer-btn:hover {
+  transform: scale(1.05);
+}
+
+.timer-btn:active {
+  transform: scale(0.95);
 }
 
 /* === PLANO PERSONALIZADO === */
@@ -457,4 +732,26 @@ h1, h2, h3 {
 .plan-summary h2 {
   color: var(--branco);
   margin-bottom: 8px;
+}
+
+/* === NOTIFICAÇÃO TOAST === */
+.toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--verde);
+  color: var(--branco);
+  padding: 16px 32px;
+  border-radius: 30px;
+  font-size: 18px;
+  font-weight: 700;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  transition: transform 0.4s ease;
+  z-index: 999;
+  pointer-events: none;
+}
+
+.toast.show {
+  transform: translateX(-50%) translateY(0);
 }
