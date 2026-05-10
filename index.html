@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="VitaSênior v0.2.0 — Treino fisioterapêutico personalizado para idosos. Alongamento, equilíbrio e respiração de forma simples e segura.">
-  <title>VitaSênior v0.2.0 — Movimento é vida</title>
+  <meta name="description" content="VitaSênior v0.3.0 — Treino fisioterapêutico personalizado para idosos. Alongamento, equilíbrio e respiração de forma simples e segura.">
+  <title>VitaSênior v0.3.0 — Movimento é vida</title>
 
   <!-- Fontes -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,7 +25,7 @@
         <span class="logo-icon">🌿</span>
         <h1>VitaSênior</h1>
         <p class="slogan">Movimento é vida</p>
-        <p class="version-tag">v0.2.0</p>
+        <p class="version-tag">v0.3.0</p>
       </div>
 
       <div class="q-step">
@@ -85,15 +85,15 @@
       </div>
 
       <div class="categories">
-        <button class="cat-btn" id="btn-cat-along">
+        <button class="cat-btn" onclick="abrirCategoria('alongamento')" id="btn-cat-along">
           <span class="emoji">🧘</span>
           <span class="label">Alongamento<small>Flexibilidade e conforto</small></span>
         </button>
-        <button class="cat-btn" id="btn-cat-equil">
+        <button class="cat-btn" onclick="abrirCategoria('equilibrio')" id="btn-cat-equil">
           <span class="emoji">⚖️</span>
           <span class="label">Equilíbrio<small>Segurança e estabilidade</small></span>
         </button>
-        <button class="cat-btn" id="btn-cat-resp">
+        <button class="cat-btn" onclick="abrirCategoria('respiracao')" id="btn-cat-resp">
           <span class="emoji">🌬️</span>
           <span class="label">Respiração<small>Calma e bem-estar</small></span>
         </button>
@@ -109,6 +109,38 @@
       </div>
     </div>
   </div>
+
+  <!-- ==========================================
+       TELA 5: LISTA DE EXERCÍCIOS (por categoria)
+       ========================================== -->
+  <div id="screen-list" class="screen">
+    <div class="header">
+      <button class="btn-back" onclick="mostrarTela('home')" aria-label="Voltar">←</button>
+      <h2 id="list-title">Categoria</h2>
+    </div>
+    <div class="list-container">
+      <div class="filter-bar" id="filter-bar">
+        <button class="filter-btn active" onclick="filtrarDificuldade('todos',this)">Todos</button>
+        <button class="filter-btn" onclick="filtrarDificuldade('fácil',this)">Fácil</button>
+        <button class="filter-btn" onclick="filtrarDificuldade('médio',this)">Médio</button>
+      </div>
+      <div class="cards-grid" id="cards-grid"></div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       TELA 6: DETALHE DO EXERCÍCIO
+       ========================================== -->
+  <div id="screen-detail" class="screen">
+    <div class="header">
+      <button class="btn-back" onclick="voltarParaLista()" aria-label="Voltar">←</button>
+      <h2 id="detail-header-title">Exercício</h2>
+    </div>
+    <div class="detail-container" id="detail-content"></div>
+  </div>
+
+  <!-- Notificação toast -->
+  <div class="toast" id="toast">✅ Parabéns! Exercício concluído!</div>
 
   <!-- Scripts -->
   <script src="js/exercises.js"></script>

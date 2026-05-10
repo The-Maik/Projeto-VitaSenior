@@ -1,6 +1,6 @@
 /**
- * VitaSênior v0.2.0 — Lógica do App
- * Navegação, questionário de saúde e geração de treino personalizado.
+ * VitaSênior v0.3.0 — Lógica do App
+ * Navegação, questionário de saúde, geração de treino, lista de exercícios e cronômetro.
  * Depende de: exercises.js (variável global EXERCICIOS)
  */
 
@@ -8,13 +8,21 @@
 // ESTADO
 // ==========================================
 let perfilUsuario = '';
+let categoriaAtual = '';
+let filtroAtual = 'todos';
 let etapaQuestionario = 0;
+let detalheOrigem = 'lista';
 
 let respostas = {
   dor: [],
   objetivos: [],
   limitacoes: []
 };
+
+// Estado do cronômetro
+let cronometroIntervalo = null;
+let cronometroSegundos = 0;
+let cronometroRodando = false;
 
 // ==========================================
 // CONFIGURAÇÃO DO QUESTIONÁRIO
@@ -73,6 +81,7 @@ function mostrarTela(nome) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + nome).classList.add('active');
   window.scrollTo(0, 0);
+  pararCronometro();
 }
 
 // ==========================================
@@ -185,7 +194,6 @@ function finalizarQuestionario() {
 // GERAÇÃO DE TREINO PERSONALIZADO
 // ==========================================
 function gerarPlano() {
-  // Reunir todos os exercícios
   const todosExercicios = [];
   Object.keys(EXERCICIOS).forEach(cat => {
     EXERCICIOS[cat].itens.forEach(ex => {
@@ -197,12 +205,10 @@ function gerarPlano() {
   const areasDeDor = respostas.dor.filter(p => p !== 'nenhuma');
   const objetivos = respostas.objetivos;
 
-  // Passo 1: Filtrar exercícios contraindicados
   let seguros = todosExercicios.filter(ex => {
     return !ex.contraindicacoes.some(c => limitacoes.includes(c));
   });
 
-  // Passo 2: Pontuar por relevância
   seguros.forEach(ex => {
     let pontuacao = 0;
     if (areasDeDor.length > 0 && ex.areasDeDor.some(p => areasDeDor.includes(p))) {
@@ -217,11 +223,9 @@ function gerarPlano() {
     ex.pontuacao = pontuacao;
   });
 
-  // Passo 3: Ordenar por pontuação e pegar os 6 melhores
   seguros.sort((a, b) => b.pontuacao - a.pontuacao);
   const plano = seguros.slice(0, 6);
 
-  // Passo 4: Renderizar o plano
   const container = document.getElementById('plan-content');
   const rotuloPerfil = perfilUsuario === 'self' ? 'seu' : 'do(a) praticante';
   const textoLimitacoes = limitacoes.length
@@ -276,6 +280,9 @@ function gerarPlano() {
             <span class="duration">🔄 ${ex.series} séries</span>
             <span class="duration">😴 ${ex.descanso}s descanso</span>
           </div>
+          <button class="btn-view" onclick="abrirDetalheDoPlano('${ex.cat}','${ex.id}')" style="margin-top:8px">
+            Ver exercício
+          </button>
         </div>`;
     });
   }
@@ -285,7 +292,234 @@ function gerarPlano() {
       <span class="emoji">🏠</span>
       <span class="label">Explorar todos os exercícios</span>
     </button>
-    <div class="version-tag" style="margin:20px 0">VitaSênior v0.2.0 — Projeto universitário de Impacto Social</div>`;
+    <div class="version-tag" style="margin:20px 0">VitaSênior v0.3.0 — Projeto universitário de Impacto Social</div>`;
 
   container.innerHTML = html;
+}
+
+function abrirDetalheDoPlano(cat, id) {
+  categoriaAtual = cat;
+  abrirDetalhe(cat, id, 'plano');
+}
+
+// ==========================================
+// LISTA DE CATEGORIAS
+// ==========================================
+function abrirCategoria(cat) {
+  categoriaAtual = cat;
+  filtroAtual = 'todos';
+  document.getElementById('list-title').textContent = EXERCICIOS[cat].titulo;
+  renderizarCartoes(cat);
+
+  // Resetar botões de filtro
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.filter-btn').classList.add('active');
+
+  mostrarTela('list');
+}
+
+function renderizarCartoes(cat) {
+  const grade = document.getElementById('cards-grid');
+  grade.innerHTML = '';
+
+  EXERCICIOS[cat].itens.forEach(ex => {
+    const deveEsconder = filtroAtual !== 'todos' && ex.dificuldade.toLowerCase() !== filtroAtual;
+    const classeInsignia = ex.dificuldade === 'Fácil' ? 'badge-easy' : 'badge-medium';
+
+    const cartao = document.createElement('div');
+    cartao.className = 'card';
+    cartao.dataset.difficulty = ex.dificuldade.toLowerCase();
+    if (deveEsconder) cartao.style.display = 'none';
+
+    cartao.innerHTML = `
+      <span class="card-emoji">${ex.emoji}</span>
+      <h3>${ex.nome}</h3>
+      <div class="card-meta">
+        <span class="badge ${classeInsignia}">${ex.dificuldade}</span>
+        <span class="duration">⏱ ${ex.duracao}</span>
+      </div>
+      <button class="btn-view" onclick="abrirDetalhe('${cat}','${ex.id}','lista')">Ver exercício</button>`;
+
+    grade.appendChild(cartao);
+  });
+}
+
+function filtrarDificuldade(nivel, btn) {
+  filtroAtual = nivel;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  document.querySelectorAll('.card').forEach(cartao => {
+    const corresponde = nivel === 'todos' || cartao.dataset.difficulty === nivel;
+    cartao.style.display = corresponde ? '' : 'none';
+  });
+}
+
+// ==========================================
+// DETALHE DO EXERCÍCIO
+// ==========================================
+function abrirDetalhe(cat, id, origem) {
+  detalheOrigem = origem || 'lista';
+  const ex = EXERCICIOS[cat].itens.find(e => e.id === id);
+  if (!ex) return;
+
+  document.getElementById('detail-header-title').textContent = ex.nome;
+  const classeInsignia = ex.dificuldade === 'Fácil' ? 'badge-easy' : 'badge-medium';
+
+  const htmlPassos = ex.passos.map(s => `<li>${s}</li>`).join('');
+  const htmlBeneficios = ex.beneficios.map(b => `<li>${b}</li>`).join('');
+
+  document.getElementById('detail-content').innerHTML = `
+    <span class="detail-emoji">${ex.emoji}</span>
+    <h1>${ex.nome}</h1>
+    <div class="detail-meta">
+      <span class="badge ${classeInsignia}">${ex.dificuldade}</span>
+      <span class="duration">⏱ ${ex.duracao}</span>
+      <span class="duration">🔄 ${ex.series} séries</span>
+    </div>
+
+    <div class="section-block">
+      <h2>📝 Como fazer:</h2>
+      <ol>${htmlPassos}</ol>
+    </div>
+
+    <div class="section-block">
+      <h2>💚 Benefícios:</h2>
+      <ul>${htmlBeneficios}</ul>
+    </div>
+
+    <div class="section-block warning-block">
+      <h2>⚠️ Atenção:</h2>
+      <p>${ex.aviso}</p>
+    </div>
+
+    <div class="timer-box">
+      <h2 style="margin-bottom:4px">⏱ Descanso entre séries</h2>
+      <p style="color:#888;font-size:16px">Tempo recomendado: ${ex.descanso} segundos</p>
+      <div class="timer-display" id="timer-display">${formatarTempo(ex.descanso)}</div>
+      <div class="timer-controls">
+        <button class="timer-btn play" onclick="iniciarCronometro(${ex.descanso})" id="btn-play">▶ Iniciar</button>
+        <button class="timer-btn pause" onclick="pausarCronometro()" id="btn-pause" style="display:none">⏸ Pausar</button>
+        <button class="timer-btn stop" onclick="reiniciarCronometro(${ex.descanso})" id="btn-stop" style="display:none">⏹ Parar</button>
+      </div>
+    </div>
+
+    <div class="section-block source-block">
+      <h2>📚 Fonte:</h2>
+      <p>${ex.fonte}</p>
+    </div>
+
+    <button class="btn-done" id="btn-done" onclick="marcarConcluido(this)">✅ Concluí esse exercício!</button>`;
+
+  mostrarTela('detail');
+}
+
+function voltarParaLista() {
+  pararCronometro();
+  if (detalheOrigem === 'plano') {
+    mostrarTela('plan');
+  } else {
+    renderizarCartoes(categoriaAtual);
+    mostrarTela('list');
+  }
+}
+
+// ==========================================
+// CRONÔMETRO
+// ==========================================
+function formatarTempo(totalSegundos) {
+  const min = Math.floor(totalSegundos / 60);
+  const seg = totalSegundos % 60;
+  return (min > 0 ? min + ':' : '') + String(seg).padStart(2, '0');
+}
+
+function iniciarCronometro(total) {
+  if (cronometroRodando) return;
+  if (cronometroSegundos <= 0) cronometroSegundos = total;
+
+  cronometroRodando = true;
+  document.getElementById('btn-play').style.display = 'none';
+  document.getElementById('btn-pause').style.display = '';
+  document.getElementById('btn-stop').style.display = '';
+
+  cronometroIntervalo = setInterval(() => {
+    cronometroSegundos--;
+    document.getElementById('timer-display').textContent = formatarTempo(cronometroSegundos);
+
+    if (cronometroSegundos <= 0) {
+      clearInterval(cronometroIntervalo);
+      cronometroRodando = false;
+
+      const visor = document.getElementById('timer-display');
+      visor.textContent = '✅ Descansou!';
+      visor.style.color = '#2e7d32';
+
+      const btnIniciar = document.getElementById('btn-play');
+      btnIniciar.style.display = '';
+      btnIniciar.textContent = '🔄 Reiniciar';
+      btnIniciar.onclick = () => reiniciarEIniciar(total);
+
+      document.getElementById('btn-pause').style.display = 'none';
+      document.getElementById('btn-stop').style.display = 'none';
+    }
+  }, 1000);
+}
+
+function pausarCronometro() {
+  if (!cronometroRodando) return;
+  clearInterval(cronometroIntervalo);
+  cronometroRodando = false;
+
+  const btnIniciar = document.getElementById('btn-play');
+  btnIniciar.style.display = '';
+  btnIniciar.textContent = '▶ Continuar';
+  document.getElementById('btn-pause').style.display = 'none';
+}
+
+function reiniciarCronometro(total) {
+  pararCronometro();
+  cronometroSegundos = total;
+
+  const visor = document.getElementById('timer-display');
+  if (visor) {
+    visor.textContent = formatarTempo(total);
+    visor.style.color = 'var(--green)';
+  }
+
+  const btnIniciar = document.getElementById('btn-play');
+  if (btnIniciar) {
+    btnIniciar.style.display = '';
+    btnIniciar.textContent = '▶ Iniciar';
+    btnIniciar.onclick = () => iniciarCronometro(total);
+  }
+
+  const btnPausar = document.getElementById('btn-pause');
+  if (btnPausar) btnPausar.style.display = 'none';
+
+  const btnParar = document.getElementById('btn-stop');
+  if (btnParar) btnParar.style.display = 'none';
+}
+
+function reiniciarEIniciar(total) {
+  reiniciarCronometro(total);
+  iniciarCronometro(total);
+}
+
+function pararCronometro() {
+  if (cronometroIntervalo) clearInterval(cronometroIntervalo);
+  cronometroRodando = false;
+  cronometroSegundos = 0;
+}
+
+// ==========================================
+// CONCLUSÃO DO EXERCÍCIO
+// ==========================================
+function marcarConcluido(btn) {
+  btn.classList.add('completed');
+  btn.textContent = '🎉 Muito bem! Exercício concluído!';
+  btn.disabled = true;
+
+  const notificacao = document.getElementById('toast');
+  notificacao.classList.add('show');
+  setTimeout(() => notificacao.classList.remove('show'), 2500);
 }
