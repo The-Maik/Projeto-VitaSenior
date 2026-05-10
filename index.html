@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="VitaSênior v0.1.0 — Treino fisioterapêutico personalizado para idosos.">
-  <title>VitaSênior v0.1.0 — Movimento é vida</title>
+  <meta name="description" content="VitaSênior v0.2.0 — Treino fisioterapêutico personalizado para idosos. Alongamento, equilíbrio e respiração de forma simples e segura.">
+  <title>VitaSênior v0.2.0 — Movimento é vida</title>
 
   <!-- Fontes -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,7 +25,7 @@
         <span class="logo-icon">🌿</span>
         <h1>VitaSênior</h1>
         <p class="slogan">Movimento é vida</p>
-        <p class="version-tag">v0.1.0</p>
+        <p class="version-tag">v0.2.0</p>
       </div>
 
       <div class="q-step">
@@ -40,14 +40,41 @@
         </div>
       </div>
 
-      <button class="btn-next" onclick="irParaHome()" id="btn-start">
-        Entrar →
+      <button class="btn-next" onclick="iniciarQuestionario()" id="btn-start">
+        Começar avaliação →
       </button>
     </div>
   </div>
 
   <!-- ==========================================
-       TELA 2: HOME — CATEGORIAS
+       TELA 2: QUESTIONÁRIO DE SAÚDE
+       ========================================== -->
+  <div id="screen-quiz" class="screen">
+    <div class="header">
+      <button class="btn-back" onclick="mostrarTela('welcome')" aria-label="Voltar">←</button>
+      <h2>Avaliação de Saúde</h2>
+    </div>
+    <div class="q-container" style="min-height:auto;padding-top:16px">
+      <div class="progress-bar">
+        <div class="progress-fill" id="prog-fill" style="width:0%"></div>
+      </div>
+      <div id="quiz-content"></div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       TELA 3: TREINO PERSONALIZADO
+       ========================================== -->
+  <div id="screen-plan" class="screen">
+    <div class="header">
+      <button class="btn-back" onclick="mostrarTela('welcome')" aria-label="Voltar">←</button>
+      <h2>Seu Treino Personalizado</h2>
+    </div>
+    <div class="list-container" id="plan-content"></div>
+  </div>
+
+  <!-- ==========================================
+       TELA 4: HOME — CATEGORIAS
        ========================================== -->
   <div id="screen-home" class="screen">
     <div class="home-container">
@@ -72,6 +99,11 @@
         </button>
       </div>
 
+      <button class="cat-btn" onclick="mostrarTela('plan')" style="max-width:400px;margin-top:24px;border:2px solid var(--verde)" id="btn-my-plan">
+        <span class="emoji">📋</span>
+        <span class="label">Meu Treino Personalizado<small>Baseado na sua avaliação</small></span>
+      </button>
+
       <div class="footer-home">
         Projeto universitário — <span>Impacto Social</span>
       </div>
@@ -79,6 +111,7 @@
   </div>
 
   <!-- Scripts -->
+  <script src="js/exercises.js"></script>
   <script src="js/app.js"></script>
 
 </body>
