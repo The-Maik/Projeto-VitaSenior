@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="VitaSênior v0.1.0 — Treino fisioterapêutico personalizado para idosos.">
+  <title>VitaSênior v0.1.0 — Movimento é vida</title>
+
+  <!-- Fontes -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- ==========================================
+       TELA 1: BEM-VINDO / SELEÇÃO DE PERFIL
+       ========================================== -->
+  <div id="screen-welcome" class="screen active">
+    <div class="q-container">
+      <div class="logo-area" style="text-align:center">
+        <span class="logo-icon">🌿</span>
+        <h1>VitaSênior</h1>
+        <p class="slogan">Movimento é vida</p>
+        <p class="version-tag">v0.1.0</p>
+      </div>
+
+      <div class="q-step">
+        <h2>👤 Quem vai usar o app?</h2>
+        <div class="q-options" id="role-opts">
+          <div class="q-opt" onclick="selecionarPerfil(this,'self')">
+            <span class="q-check"></span>Eu sou o praticante
+          </div>
+          <div class="q-opt" onclick="selecionarPerfil(this,'instructor')">
+            <span class="q-check"></span>Estou orientando um(a) idoso(a)
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-next" onclick="irParaHome()" id="btn-start">
+        Entrar →
+      </button>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       TELA 2: HOME — CATEGORIAS
+       ========================================== -->
+  <div id="screen-home" class="screen">
+    <div class="home-container">
+      <div class="logo-area">
+        <span class="logo-icon">🌿</span>
+        <h1>VitaSênior</h1>
+        <p class="slogan">Movimento é vida</p>
+      </div>
+
+      <div class="categories">
+        <button class="cat-btn" id="btn-cat-along">
+          <span class="emoji">🧘</span>
+          <span class="label">Alongamento<small>Flexibilidade e conforto</small></span>
+        </button>
+        <button class="cat-btn" id="btn-cat-equil">
+          <span class="emoji">⚖️</span>
+          <span class="label">Equilíbrio<small>Segurança e estabilidade</small></span>
+        </button>
+        <button class="cat-btn" id="btn-cat-resp">
+          <span class="emoji">🌬️</span>
+          <span class="label">Respiração<small>Calma e bem-estar</small></span>
+        </button>
+      </div>
+
+      <div class="footer-home">
+        Projeto universitário — <span>Impacto Social</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/app.js"></script>
+
+</body>
+</html>
