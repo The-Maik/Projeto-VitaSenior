@@ -21,3 +21,7 @@ VitaSênior é um aplicativo web desenvolvido como projeto universitário de **I
 2. Selecione seu perfil
 3. Preencha a avaliação de saúde
 4. Receba seu treino personalizado
+
+---
+
+🌐 **Acesse online:** [the-maik.github.io/Projeto-VitaSenior](https://the-maik.github.io/Projeto-VitaSenior/)
