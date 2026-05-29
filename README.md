@@ -21,11 +21,3 @@ VitaSênior é um aplicativo web desenvolvido como projeto universitário de **I
 2. Selecione seu perfil
 3. Preencha a avaliação de saúde
 4. Receba seu treino personalizado
-
-## 👨‍💻 Autor
-
-**Maycon Rodrigues Da Silva** — RA: 2224200446
-
-## 📄 Licença
-
-Projeto universitário — Impacto Social
