@@ -1,610 +1,365 @@
-/**
- * VitaSênior v0.4.0 — Lógica do App
- * Navegação, questionário de saúde, geração de treino e cronômetro.
- * Depende de: exercises.js (variável global EXERCICIOS)
- */
+import { ARTICLES, CATEGORIES, SOURCES } from "./content.js";
+import { createSession, filterArticles } from "./model.js";
+import { ReadingTimer, formatTime } from "./timer.js";
 
-// ==========================================
-// ESTADO
-// ==========================================
-let perfilUsuario = '';
-let categoriaAtual = '';
-let filtroAtual = 'todos';
-let etapaQuestionario = 0;
-let detalheOrigem = 'lista';
-let exercicioAtualId = ''; // ID do exercício sendo visualizado
-let exercicioAtualCat = ''; // Categoria do exercício sendo visualizado
-
-// Exercícios concluídos (Set de strings 'categoria:id')
-let exerciciosConcluidos = new Set();
-
-let respostas = {
-  dor: [],
-  objetivos: [],
-  limitacoes: []
+const $ = (selector) => document.querySelector(selector);
+const session = createSession(ARTICLES);
+const filters = {
+  category: "todos",
+  query: "",
+  savedOnly: false,
+  saved: session.saved,
 };
+const timer = new ReadingTimer();
+let interval = null;
+let activeArticle = null;
+let dialogOpener = null;
 
-// Estado do cronômetro
-let cronometroIntervalo = null;
-let cronometroSegundos = 0;
-let cronometroRodando = false;
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
 
-// ==========================================
-// CONFIGURAÇÃO DO QUESTIONÁRIO
-// ==========================================
-const ETAPAS_QUESTIONARIO = [
-  {
-    id: 'dor',
-    titulo: '🩹 Onde você sente dor ou desconforto?',
-    subtitulo: 'Selecione todas as áreas que se aplicam (ou nenhuma).',
-    opcoes: [
-      { v: 'pescoco', l: 'Pescoço' },
-      { v: 'ombros', l: 'Ombros' },
-      { v: 'costas_superior', l: 'Costas (superior)' },
-      { v: 'lombar', l: 'Lombar (costas baixa)' },
-      { v: 'quadris', l: 'Quadris' },
-      { v: 'joelhos', l: 'Joelhos' },
-      { v: 'tornozelos', l: 'Tornozelos / Pés' },
-      { v: 'nenhuma', l: 'Não sinto dores' }
-    ]
-  },
-  {
-    id: 'objetivos',
-    titulo: '🎯 Qual seu objetivo principal?',
-    subtitulo: 'Selecione um ou mais objetivos.',
-    opcoes: [
-      { v: 'vitalidade', l: '💪 Mais vitalidade e energia' },
-      { v: 'longevidade', l: '🌱 Longevidade e saúde' },
-      { v: 'dores', l: '🩹 Alívio de dores' },
-      { v: 'mobilidade', l: '🚶 Melhorar mobilidade' },
-      { v: 'equilibrio', l: '⚖️ Melhorar equilíbrio' },
-      { v: 'relaxamento', l: '🧘 Relaxamento e bem-estar' }
-    ]
-  },
-  {
-    id: 'limitacoes',
-    titulo: '⚠️ Possui alguma condição limitante?',
-    subtitulo: 'Selecione todas que se aplicam (ou nenhuma).',
-    opcoes: [
-      { v: 'hernia_disco', l: 'Hérnia de disco (lombar)' },
-      { v: 'hernia_cervical', l: 'Hérnia cervical' },
-      { v: 'artrose', l: 'Artrose / Artrite' },
-      { v: 'osteoporose', l: 'Osteoporose' },
-      { v: 'problemas_cardiacos', l: 'Problemas cardíacos' },
-      { v: 'labirintite', l: 'Labirintite / Vertigem' },
-      { v: 'protese_joelho', l: 'Prótese no joelho' },
-      { v: 'protese_quadril', l: 'Prótese no quadril' },
-      { v: 'nenhuma', l: 'Nenhuma condição' }
-    ]
+// Desenhos vetoriais originais, sem biblioteca ou recurso externo.
+const iconPaths = {
+  sun: [
+    "M32 19v-7m0 40v-7M19 32h-7m40 0h-7M18 18l5 5m18 18 5 5M18 46l5-5m18-18 5-5",
+    "M42 32a10 10 0 1 1-20 0 10 10 0 0 1 20 0",
+  ],
+  leaf: ["M16 47C9 24 29 13 50 14c1 23-14 36-31 30", "M13 53c6-17 16-28 31-34"],
+  home: ["m11 29 21-18 21 18M18 25v27h28V25M27 52V36h10v16"],
+  balance: [
+    "M32 13v38M20 51h24M13 23h38M19 23 10 39h18L19 23m26 0-9 16h18L45 23",
+  ],
+  wind: [
+    "M10 23h30c14 0 14-16 4-16-5 0-7 3-7 6M10 32h40c12 0 12 16 3 16-4 0-6-2-6-5M10 41h17c12 0 12 15 3 15",
+  ],
+  chat: [
+    "M50 32c0 11-8 19-20 19h-6L13 56l3-12c-5-4-8-10-8-16 0-11 9-19 21-19s21 9 21 23Z",
+    "M20 25h19M20 34h14",
+  ],
+  bookmark: ["M17 10h30v45L32 45 17 55Z"],
+};
+function icon(name) {
+  const namespace = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(namespace, "svg");
+  svg.setAttribute("viewBox", "0 0 64 64");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("stroke", "currentColor");
+  svg.setAttribute("stroke-width", "2.5");
+  svg.setAttribute("stroke-linecap", "round");
+  svg.setAttribute("stroke-linejoin", "round");
+  for (const d of iconPaths[name]) {
+    const path = document.createElementNS(namespace, "path");
+    path.setAttribute("d", d);
+    svg.append(path);
   }
-];
-
-// ==========================================
-// NAVEGAÇÃO
-// ==========================================
-function mostrarTela(nome) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-' + nome).classList.add('active');
-  window.scrollTo(0, 0);
-  pararCronometro();
+  return svg;
 }
 
-// ==========================================
-// BEM-VINDO / SELEÇÃO DE PERFIL
-// ==========================================
-function selecionarPerfil(el, perfil) {
-  perfilUsuario = perfil;
-  document.querySelectorAll('#role-opts .q-opt').forEach(o => o.classList.remove('selected'));
-  el.classList.add('selected');
-}
-
-function iniciarQuestionario() {
-  if (!perfilUsuario) {
-    alert('Por favor, selecione quem vai usar o app.');
-    return;
-  }
-  etapaQuestionario = 0;
-  respostas = { dor: [], objetivos: [], limitacoes: [] };
-  renderizarEtapa();
-  mostrarTela('quiz');
-}
-
-// ==========================================
-// QUESTIONÁRIO
-// ==========================================
-function renderizarEtapa() {
-  const etapa = ETAPAS_QUESTIONARIO[etapaQuestionario];
-  const container = document.getElementById('quiz-content');
-
-  // Atualizar barra de progresso
-  const progresso = ((etapaQuestionario + 1) / ETAPAS_QUESTIONARIO.length) * 100;
-  document.getElementById('prog-fill').style.width = progresso + '%';
-
-  // Construir opções
-  let html = `<div class="q-step">
-    <h2>${etapa.titulo}</h2>
-    <p style="color:#888;margin-bottom:16px">${etapa.subtitulo}</p>
-    <div class="q-options" id="qopts">`;
-
-  etapa.opcoes.forEach(opc => {
-    const selecionada = respostas[etapa.id].includes(opc.v) ? ' selected' : '';
-    html += `<div class="q-opt${selecionada}" onclick="alternarOpcao(this,'${etapa.id}','${opc.v}')">
-      <span class="q-check"></span>${opc.l}
-    </div>`;
-  });
-
-  html += '</div></div>';
-
-  // Botões de navegação
-  const ehUltima = etapaQuestionario >= ETAPAS_QUESTIONARIO.length - 1;
-  html += '<div style="display:flex;gap:12px">';
-
-  if (etapaQuestionario > 0) {
-    html += '<button class="btn-next" onclick="etapaAnterior()" style="background:#888;flex:1">← Anterior</button>';
-  }
-
-  const acaoProxima = ehUltima ? 'finalizarQuestionario()' : 'proximaEtapa()';
-  const rotuloProximo = ehUltima ? 'Ver meu treino ✨' : 'Próximo →';
-  html += `<button class="btn-next" onclick="${acaoProxima}" style="flex:1">${rotuloProximo}</button>`;
-  html += '</div>';
-
-  container.innerHTML = html;
-}
-
-function alternarOpcao(el, campo, val) {
-  // "Nenhuma" limpa todas as outras
-  if (val === 'nenhuma') {
-    respostas[campo] = ['nenhuma'];
-    document.querySelectorAll('#qopts .q-opt').forEach(o => o.classList.remove('selected'));
-    el.classList.add('selected');
-    return;
-  }
-
-  // Remover "nenhuma" ao selecionar uma opção específica
-  respostas[campo] = respostas[campo].filter(v => v !== 'nenhuma');
-
-  // Alternar a opção selecionada
-  if (respostas[campo].includes(val)) {
-    respostas[campo] = respostas[campo].filter(v => v !== val);
-    el.classList.remove('selected');
-  } else {
-    respostas[campo].push(val);
-    el.classList.add('selected');
-  }
-
-  // Desmarcar "nenhuma" visualmente
-  document.querySelectorAll('#qopts .q-opt').forEach(o => {
-    if (o.textContent.includes('Nenhum') || o.textContent.includes('Não sinto')) {
-      o.classList.remove('selected');
-    }
-  });
-}
-
-function proximaEtapa() {
-  etapaQuestionario++;
-  renderizarEtapa();
-}
-
-function etapaAnterior() {
-  etapaQuestionario--;
-  renderizarEtapa();
-}
-
-function finalizarQuestionario() {
-  gerarPlano();
-  mostrarTela('plan');
-}
-
-// ==========================================
-// GERAÇÃO DE TREINO PERSONALIZADO
-// ==========================================
-function gerarPlano() {
-  // Reunir todos os exercícios
-  const todosExercicios = [];
-  Object.keys(EXERCICIOS).forEach(cat => {
-    EXERCICIOS[cat].itens.forEach(ex => {
-      todosExercicios.push({ ...ex, cat });
+function renderCards(focusKey) {
+  const articles = filterArticles(ARTICLES, filters);
+  const fragment = document.createDocumentFragment();
+  for (const article of articles) {
+    const card = element("article", "content-card");
+    const art = element("div", `card-art ${article.category}`);
+    art.append(
+      element(
+        "span",
+        "card-number",
+        String(ARTICLES.indexOf(article) + 1).padStart(2, "0"),
+      ),
+      icon(article.icon),
+    );
+    const bookmark = element("button", "bookmark");
+    bookmark.type = "button";
+    bookmark.dataset.focusKey = `save-${article.id}`;
+    bookmark.setAttribute("aria-label", `Favoritar: ${article.title}`);
+    bookmark.setAttribute(
+      "aria-pressed",
+      String(session.saved.has(article.id)),
+    );
+    bookmark.append(icon("bookmark"));
+    bookmark.addEventListener("click", () => {
+      session.toggleSaved(article.id);
+      renderCards(bookmark.dataset.focusKey);
     });
-  });
+    art.append(bookmark);
+    const content = element("div", "card-content");
+    const title = element("h3", "", article.title);
+    title.id = `title-${article.id}`;
+    card.setAttribute("aria-labelledby", title.id);
+    content.append(
+      element("p", "card-category", CATEGORIES[article.category]),
+      title,
+      element("p", "card-description", article.summary),
+    );
+    const bottom = element("div", "card-bottom");
+    bottom.append(element("span", "", "Leitura breve"));
+    const open = element("button", "card-open", "Ler conteúdo ↗");
+    open.type = "button";
+    open.dataset.focusKey = `open-${article.id}`;
+    open.setAttribute("aria-label", `Ler: ${article.title}`);
+    open.addEventListener("click", () => openArticle(article, open));
+    bottom.append(open);
+    content.append(bottom);
+    if (session.read.has(article.id))
+      content.append(element("p", "read-badge", "✓ Você marcou como lido"));
+    card.append(art, content);
+    fragment.append(card);
+  }
+  $("#cards-grid").replaceChildren(fragment);
+  $("#result-count").textContent =
+    `${articles.length} ${articles.length === 1 ? "conteúdo disponível" : "conteúdos disponíveis"}`;
+  $("#saved-count").textContent = `(${session.saved.size})`;
+  $("#empty-state").hidden = articles.length > 0;
+  $("#empty-description").textContent = filters.savedOnly
+    ? "Use o botão de favorito em um conteúdo. Se já tem favoritos, tente limpar os filtros de assunto e busca."
+    : "Tente outro assunto ou uma palavra diferente.";
+  $("#reading-progress").value = session.read.size;
+  $("#reading-count").textContent =
+    `${session.read.size} de ${ARTICLES.length} conteúdos lidos nesta visita`;
+  if (focusKey) {
+    const replacement = [...document.querySelectorAll("[data-focus-key]")].find(
+      (node) => node.dataset.focusKey === focusKey,
+    );
+    (replacement || $("#saved-filter")).focus({ preventScroll: true });
+  }
+}
 
-  const limitacoes = respostas.limitacoes.filter(l => l !== 'nenhuma');
-  const areasDeDor = respostas.dor.filter(p => p !== 'nenhuma');
-  const objetivos = respostas.objetivos;
+function openDialog(dialog, opener) {
+  dialogOpener = opener;
+  dialog.showModal();
+  dialog.scrollTop = 0;
+}
 
-  // Passo 1: Filtrar exercícios contraindicados
-  let seguros = todosExercicios.filter(ex => {
-    return !ex.contraindicacoes.some(c => limitacoes.includes(c));
-  });
+function updateArticleActions() {
+  const read = session.read.has(activeArticle.id);
+  const saved = session.saved.has(activeArticle.id);
+  $("#mark-read").textContent = read ? "Marcado como lido" : "Marcar como lido";
+  $("#mark-read").disabled = read;
+  $("#bookmark-article").textContent = saved
+    ? "Remover dos favoritos"
+    : "Favoritar";
+  $("#bookmark-article").setAttribute("aria-pressed", String(saved));
+}
 
-  // Passo 2: Pontuar por relevância
-  seguros.forEach(ex => {
-    let pontuacao = 0;
-    // +3 se o exercício atinge uma área de dor do usuário
-    if (areasDeDor.length > 0 && ex.areasDeDor.some(p => areasDeDor.includes(p))) {
-      pontuacao += 3;
+function openArticle(article, opener) {
+  activeArticle = article;
+  const body = $("#article-body");
+  const title = element("h2", "", article.title);
+  title.id = "article-title";
+  title.tabIndex = -1;
+  const list = element("ul");
+  for (const point of article.points) list.append(element("li", "", point));
+  const source = SOURCES[article.source];
+  const sourceNote = element("p", "source-note");
+  sourceNote.append("Referência para esta leitura: ");
+  const link = element("a", "", source.label);
+  link.href = source.url;
+  link.rel = "noreferrer";
+  sourceNote.append(
+    link,
+    ` (${source.language}). Síntese educativa da equipe do projeto; não implica endosso da instituição.`,
+  );
+  body.replaceChildren(
+    title,
+    element("p", "", article.intro),
+    element("h3", "", article.heading),
+    list,
+    element("h3", "", "Para refletir"),
+    element("p", "", article.reflection),
+    element(
+      "p",
+      "article-boundary",
+      "Este texto não avalia sua saúde e não é uma prescrição. Procure orientação profissional para escolher ou adaptar práticas à sua realidade.",
+    ),
+    sourceNote,
+  );
+  $("#article-category").textContent = CATEGORIES[article.category];
+  $("#article-status").textContent = "";
+  updateArticleActions();
+  openDialog($("#article-dialog"), opener);
+  title.focus({ preventScroll: true });
+}
+
+for (const dialog of document.querySelectorAll("dialog")) {
+  dialog.addEventListener("keydown", (event) => {
+    if (event.key !== "Tab") return;
+    const controls = [
+      ...dialog.querySelectorAll(
+        'button, a[href], input:not([type="radio"]), input[type="radio"]:checked, select, [tabindex="0"]',
+      ),
+    ].filter((node) => !node.disabled && node.getClientRects().length > 0);
+    const first = controls[0];
+    const last = controls.at(-1);
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first?.focus();
     }
-    // +2 se o exercício corresponde aos objetivos do usuário
-    if (objetivos.some(o => ex.objetivos.includes(o))) {
-      pontuacao += 2;
-    }
-    // +1 bônus para exercícios fáceis (mais seguros para iniciantes)
-    if (ex.dificuldade === 'Fácil') {
-      pontuacao += 1;
-    }
-    ex.pontuacao = pontuacao;
   });
+  dialog
+    .querySelector("[data-close]")
+    .addEventListener("click", () => dialog.close());
+  dialog.addEventListener("close", () => {
+    if (dialog.id === "article-dialog") {
+      renderCards(dialogOpener?.dataset.focusKey);
+      activeArticle = null;
+    } else dialogOpener?.focus({ preventScroll: true });
+  });
+}
 
-  // Passo 3: Ordenar por pontuação e pegar os 6 melhores
-  seguros.sort((a, b) => b.pontuacao - a.pontuacao);
-  const plano = seguros.slice(0, 6);
+$("#mark-read").addEventListener("click", () => {
+  session.markRead(activeArticle.id);
+  updateArticleActions();
+  // Atualiza o fundo sem tirar o foco do modal.
+  renderCards();
+  $("#bookmark-article").focus({ preventScroll: true });
+  $("#article-status").textContent =
+    "Leitura marcada nesta visita. Você pode fechar este conteúdo e explorar outro.";
+});
+$("#bookmark-article").addEventListener("click", () => {
+  const saved = session.toggleSaved(activeArticle.id);
+  updateArticleActions();
+  renderCards();
+  $("#article-status").textContent = saved
+    ? "Conteúdo adicionado aos favoritos desta visita."
+    : "Conteúdo removido dos favoritos.";
+});
+for (const button of document.querySelectorAll("[data-category]")) {
+  button.addEventListener("click", () => {
+    filters.category = button.dataset.category;
+    for (const other of document.querySelectorAll("[data-category]"))
+      other.setAttribute("aria-pressed", String(other === button));
+    renderCards();
+  });
+}
+$("#search").addEventListener("input", (event) => {
+  filters.query = event.target.value;
+  renderCards();
+});
+$("#saved-filter").addEventListener("click", (event) => {
+  filters.savedOnly = !filters.savedOnly;
+  event.currentTarget.setAttribute("aria-pressed", String(filters.savedOnly));
+  renderCards();
+});
+$("#clear-filters").addEventListener("click", () => {
+  filters.category = "todos";
+  filters.query = "";
+  filters.savedOnly = false;
+  $("#search").value = "";
+  $("#saved-filter").setAttribute("aria-pressed", "false");
+  for (const button of document.querySelectorAll("[data-category]"))
+    button.setAttribute(
+      "aria-pressed",
+      String(button.dataset.category === "todos"),
+    );
+  renderCards();
+  $('[data-category="todos"]').focus();
+});
+$("#accessibility-open").addEventListener("click", (event) =>
+  openDialog($("#accessibility-dialog"), event.currentTarget),
+);
+for (const input of document.querySelectorAll('[name="font-size"]')) {
+  input.addEventListener("change", () =>
+    document.documentElement.classList.toggle(
+      "large-text",
+      input.value === "large",
+    ),
+  );
+}
+$("#high-contrast").addEventListener("change", (event) =>
+  document.documentElement.classList.toggle(
+    "high-contrast",
+    event.target.checked,
+  ),
+);
+$("#clear-session").addEventListener("click", () => {
+  session.clear();
+  renderCards();
+  $("#clear-status").textContent =
+    "Favoritos e marcações de leitura apagados desta página.";
+});
 
-  // Passo 4: Renderizar o plano
-  const container = document.getElementById('plan-content');
-  const rotuloPerfil = perfilUsuario === 'self' ? 'seu' : 'do(a) praticante';
-  const textoLimitacoes = limitacoes.length
-    ? limitacoes.map(l => l.replace(/_/g, ' ')).join(', ')
-    : 'Nenhuma';
-  const textoDor = areasDeDor.length
-    ? areasDeDor.map(p => p.replace(/_/g, ' ')).join(', ')
-    : 'Nenhuma dor relatada';
-  const textoObjetivos = objetivos.length
-    ? objetivos.map(o => o.replace(/_/g, ' ')).join(', ')
-    : 'Nenhum selecionado';
-  const excluidos = todosExercicios.length - seguros.length;
-
-  let html = `
-    <div class="plan-summary">
-      <h2>🌿 Treino Personalizado</h2>
-      <p>Montado com base no ${rotuloPerfil} perfil de saúde</p>
-    </div>
-    <div class="section-block">
-      <h2>📊 Resumo da Avaliação</h2>
-      <p><strong>Áreas de dor:</strong> ${textoDor}</p>
-      <p><strong>Objetivos:</strong> ${textoObjetivos}</p>
-      <p><strong>Limitações:</strong> ${textoLimitacoes}</p>
-      ${excluidos > 0 ? `<p style="color:#e65100;margin-top:8px">⚠️ ${excluidos} exercício(s) excluído(s) por incompatibilidade com suas condições.</p>` : ''}
-    </div>`;
-
-  if (plano.length === 0) {
-    html += `
-      <div class="section-block warning-block">
-        <h2>⚠️ Atenção</h2>
-        <p>Com base nas suas condições, recomendamos consultar um fisioterapeuta antes de iniciar exercícios. 
-        Nenhum exercício do nosso catálogo atual é totalmente seguro para o seu perfil.</p>
-      </div>`;
+function stopInterval() {
+  clearInterval(interval);
+  interval = null;
+}
+function renderTimer() {
+  $("#timer-display").textContent = formatTime(timer.seconds);
+  $("#timer-toggle").textContent = timer.running
+    ? "Pausar contagem"
+    : timer.seconds === 0
+      ? "Iniciar nova pausa"
+      : timer.seconds < timer.duration
+        ? "Continuar pausa"
+        : "Iniciar pausa";
+}
+function tick() {
+  if (timer.tick()) {
+    stopInterval();
+    $("#timer-status").textContent =
+      "Seu tempo de pausa terminou. Continue a leitura quando quiser.";
+  }
+  renderTimer();
+}
+$("#timer-toggle").addEventListener("click", () => {
+  if (timer.running) {
+    timer.pause();
+    stopInterval();
+    $("#timer-status").textContent =
+      "Contagem pausada. Continue quando quiser.";
   } else {
-    const concluidosPlano = plano.filter(ex => exerciciosConcluidos.has(ex.cat + ':' + ex.id)).length;
-    html += `<h2 style="margin:20px 0 12px">Exercícios recomendados (${plano.length}):</h2>`;
-    html += `<div class="progress-resumo">
-      <div class="progress-resumo-bar">
-        <div class="progress-resumo-fill" style="width:${plano.length > 0 ? (concluidosPlano / plano.length) * 100 : 0}%"></div>
-      </div>
-      <span class="progress-resumo-texto">${concluidosPlano} de ${plano.length} concluídos</span>
-    </div>`;
-
-    if (concluidosPlano === plano.length && plano.length > 0) {
-      html += `<div class="treino-completo-banner">🎉 Parabéns! Você completou todo o treino!</div>`;
-    }
-
-    plano.forEach((ex, i) => {
-      const classeInsignia = ex.dificuldade === 'Fácil' ? 'badge-easy' : 'badge-medium';
-      const tituloCategoria = EXERCICIOS[ex.cat].titulo;
-      const chaveConcluido = ex.cat + ':' + ex.id;
-      const foiConcluido = exerciciosConcluidos.has(chaveConcluido);
-      const classeConcluido = foiConcluido ? ' plan-card-concluido' : '';
-      html += `
-        <div class="plan-card${classeConcluido}">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-            <span style="font-size:32px">${foiConcluido ? '✅' : ex.emoji}</span>
-            <div>
-              <h3>${i + 1}. ${ex.nome}</h3>
-              <p style="font-size:14px;margin:0">${tituloCategoria}</p>
-            </div>
-            ${foiConcluido ? '<span class="badge-concluido">Concluído</span>' : ''}
-          </div>
-          <div class="card-meta">
-            <span class="badge ${classeInsignia}">${ex.dificuldade}</span>
-            <span class="duration">⏱ ${ex.duracao}</span>
-            <span class="duration">🔄 ${ex.series} séries</span>
-            <span class="duration">😴 ${ex.descanso}s descanso</span>
-          </div>
-          <button class="btn-view${foiConcluido ? ' btn-view-concluido' : ''}" onclick="abrirDetalheDoPlano('${ex.cat}','${ex.id}')" style="margin-top:8px">
-            ${foiConcluido ? '🔄 Refazer exercício' : 'Ver exercício'}
-          </button>
-        </div>`;
-    });
+    timer.start();
+    interval = setInterval(tick, 250);
+    $("#timer-status").textContent =
+      "Pausa em andamento. Você pode interromper a qualquer momento.";
   }
-
-  html += `
-    <button class="cat-btn" onclick="mostrarTela('home')" style="margin-top:20px;justify-content:center;width:100%">
-      <span class="emoji">🏠</span>
-      <span class="label">Explorar todos os exercícios</span>
-    </button>
-    <div class="version-tag" style="margin:20px 0">VitaSênior v0.4.0 — Projeto universitário de Impacto Social</div>`;
-
-  container.innerHTML = html;
+  renderTimer();
+});
+function resetTimer() {
+  stopInterval();
+  timer.reset(Number($("#pause-duration").value));
+  renderTimer();
+  $("#timer-status").textContent =
+    "O tempo é livre; não orienta exercícios ou respiração.";
 }
-
-function abrirDetalheDoPlano(cat, id) {
-  categoriaAtual = cat;
-  abrirDetalhe(cat, id, 'plano');
-}
-
-// ==========================================
-// LISTA DE CATEGORIAS
-// ==========================================
-function abrirCategoria(cat) {
-  categoriaAtual = cat;
-  filtroAtual = 'todos';
-  document.getElementById('list-title').textContent = EXERCICIOS[cat].titulo;
-  renderizarCartoes(cat);
-
-  // Resetar botões de filtro
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector('.filter-btn').classList.add('active');
-
-  mostrarTela('list');
-}
-
-function renderizarCartoes(cat) {
-  const grade = document.getElementById('cards-grid');
-  grade.innerHTML = '';
-
-  // Progresso da categoria
-  const totalCategoria = EXERCICIOS[cat].itens.length;
-  const concluidosCategoria = EXERCICIOS[cat].itens.filter(ex => exerciciosConcluidos.has(cat + ':' + ex.id)).length;
-
-  // Inserir barra de progresso da categoria antes dos cards
-  const progressoDiv = document.createElement('div');
-  progressoDiv.className = 'progress-resumo';
-  progressoDiv.style.gridColumn = '1 / -1';
-  progressoDiv.innerHTML = `
-    <div class="progress-resumo-bar">
-      <div class="progress-resumo-fill" style="width:${totalCategoria > 0 ? (concluidosCategoria / totalCategoria) * 100 : 0}%"></div>
-    </div>
-    <span class="progress-resumo-texto">${concluidosCategoria} de ${totalCategoria} concluídos</span>
-  `;
-  grade.appendChild(progressoDiv);
-
-  if (concluidosCategoria === totalCategoria && totalCategoria > 0) {
-    const banner = document.createElement('div');
-    banner.className = 'treino-completo-banner';
-    banner.style.gridColumn = '1 / -1';
-    banner.textContent = '🎉 Parabéns! Todos os exercícios desta categoria foram concluídos!';
-    grade.appendChild(banner);
+$("#timer-reset").addEventListener("click", resetTimer);
+$("#pause-duration").addEventListener("change", resetTimer);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) tick();
+});
+// Não mantém favoritos por meio do cache de navegação do navegador.
+window.addEventListener("pagehide", () => {
+  session.clear();
+  for (const dialog of document.querySelectorAll("dialog[open]"))
+    dialog.close();
+  resetTimer();
+});
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) {
+    $("#clear-filters").click();
+    document.documentElement.classList.remove("large-text", "high-contrast");
+    $('[name="font-size"][value="normal"]').checked = true;
+    $("#high-contrast").checked = false;
+    renderCards();
   }
+});
 
-  EXERCICIOS[cat].itens.forEach(ex => {
-    const deveEsconder = filtroAtual !== 'todos' && ex.dificuldade.toLowerCase() !== filtroAtual;
-    const classeInsignia = ex.dificuldade === 'Fácil' ? 'badge-easy' : 'badge-medium';
-    const chaveConcluido = cat + ':' + ex.id;
-    const foiConcluido = exerciciosConcluidos.has(chaveConcluido);
+renderCards();
+renderTimer();
+for (const id of [
+  "library-controls",
+  "library-meta",
+  "accessibility-open",
+  "pause-card",
+])
+  $(`#${id}`).hidden = false;
 
-    const cartao = document.createElement('div');
-    cartao.className = 'card' + (foiConcluido ? ' card-concluido' : '');
-    cartao.dataset.difficulty = ex.dificuldade.toLowerCase();
-    if (deveEsconder) cartao.style.display = 'none';
-
-    cartao.innerHTML = `
-      ${foiConcluido ? '<div class="card-concluido-overlay"><span>✅</span></div>' : ''}
-      <span class="card-emoji">${ex.emoji}</span>
-      <h3>${ex.nome}</h3>
-      <div class="card-meta">
-        <span class="badge ${classeInsignia}">${ex.dificuldade}</span>
-        <span class="duration">⏱ ${ex.duracao}</span>
-        ${foiConcluido ? '<span class="badge-concluido">Concluído</span>' : ''}
-      </div>
-      <button class="btn-view${foiConcluido ? ' btn-view-concluido' : ''}" onclick="abrirDetalhe('${cat}','${ex.id}','lista')">
-        ${foiConcluido ? '🔄 Refazer exercício' : 'Ver exercício'}
-      </button>`;
-
-    grade.appendChild(cartao);
-  });
-}
-
-function filtrarDificuldade(nivel, btn) {
-  filtroAtual = nivel;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-
-  document.querySelectorAll('.card').forEach(cartao => {
-    const corresponde = nivel === 'todos' || cartao.dataset.difficulty === nivel;
-    cartao.style.display = corresponde ? '' : 'none';
-  });
-}
-
-// ==========================================
-// DETALHE DO EXERCÍCIO
-// ==========================================
-function abrirDetalhe(cat, id, origem) {
-  detalheOrigem = origem || 'lista';
-  exercicioAtualId = id;
-  exercicioAtualCat = cat;
-  const ex = EXERCICIOS[cat].itens.find(e => e.id === id);
-  if (!ex) return;
-
-  const chaveConcluido = cat + ':' + id;
-  const jaFoiConcluido = exerciciosConcluidos.has(chaveConcluido);
-
-  document.getElementById('detail-header-title').textContent = ex.nome;
-  const classeInsignia = ex.dificuldade === 'Fácil' ? 'badge-easy' : 'badge-medium';
-
-  const htmlPassos = ex.passos.map(s => `<li>${s}</li>`).join('');
-  const htmlBeneficios = ex.beneficios.map(b => `<li>${b}</li>`).join('');
-
-  document.getElementById('detail-content').innerHTML = `
-    <span class="detail-emoji">${ex.emoji}</span>
-    <h1>${ex.nome}</h1>
-    <div class="detail-meta">
-      <span class="badge ${classeInsignia}">${ex.dificuldade}</span>
-      <span class="duration">⏱ ${ex.duracao}</span>
-      <span class="duration">🔄 ${ex.series} séries</span>
-      ${jaFoiConcluido ? '<span class="badge-concluido">✅ Já concluído</span>' : ''}
-    </div>
-
-    <div class="section-block">
-      <h2>📝 Como fazer:</h2>
-      <ol>${htmlPassos}</ol>
-    </div>
-
-    <div class="section-block">
-      <h2>💚 Benefícios:</h2>
-      <ul>${htmlBeneficios}</ul>
-    </div>
-
-    <div class="section-block warning-block">
-      <h2>⚠️ Atenção:</h2>
-      <p>${ex.aviso}</p>
-    </div>
-
-    <div class="timer-box">
-      <h2 style="margin-bottom:4px">⏱ Descanso entre séries</h2>
-      <p style="color:#888;font-size:16px">Tempo recomendado: ${ex.descanso} segundos</p>
-      <div class="timer-display" id="timer-display">${formatarTempo(ex.descanso)}</div>
-      <div class="timer-controls">
-        <button class="timer-btn play" onclick="iniciarCronometro(${ex.descanso})" id="btn-play">▶ Iniciar</button>
-        <button class="timer-btn pause" onclick="pausarCronometro()" id="btn-pause" style="display:none">⏸ Pausar</button>
-        <button class="timer-btn stop" onclick="reiniciarCronometro(${ex.descanso})" id="btn-stop" style="display:none">⏹ Parar</button>
-      </div>
-    </div>
-
-    <div class="section-block source-block">
-      <h2>📚 Fonte:</h2>
-      <p>${ex.fonte}</p>
-    </div>
-
-    <button class="btn-done" id="btn-done" onclick="marcarConcluido(this)">
-      ${jaFoiConcluido ? '🔄 Refazer e concluir novamente' : '✅ Concluí esse exercício!'}
-    </button>`;
-
-  mostrarTela('detail');
-}
-
-function voltarParaLista() {
-  pararCronometro();
-  if (detalheOrigem === 'plano') {
-    mostrarTela('plan');
-  } else {
-    renderizarCartoes(categoriaAtual);
-    mostrarTela('list');
-  }
-}
-
-// ==========================================
-// CRONÔMETRO
-// ==========================================
-function formatarTempo(totalSegundos) {
-  const min = Math.floor(totalSegundos / 60);
-  const seg = totalSegundos % 60;
-  return (min > 0 ? min + ':' : '') + String(seg).padStart(2, '0');
-}
-
-function iniciarCronometro(total) {
-  if (cronometroRodando) return;
-  if (cronometroSegundos <= 0) cronometroSegundos = total;
-
-  cronometroRodando = true;
-  document.getElementById('btn-play').style.display = 'none';
-  document.getElementById('btn-pause').style.display = '';
-  document.getElementById('btn-stop').style.display = '';
-
-  cronometroIntervalo = setInterval(() => {
-    cronometroSegundos--;
-    document.getElementById('timer-display').textContent = formatarTempo(cronometroSegundos);
-
-    if (cronometroSegundos <= 0) {
-      clearInterval(cronometroIntervalo);
-      cronometroRodando = false;
-
-      const visor = document.getElementById('timer-display');
-      visor.textContent = '✅ Descansou!';
-      visor.style.color = '#2e7d32';
-
-      const btnIniciar = document.getElementById('btn-play');
-      btnIniciar.style.display = '';
-      btnIniciar.textContent = '🔄 Reiniciar';
-      btnIniciar.onclick = () => reiniciarEIniciar(total);
-
-      document.getElementById('btn-pause').style.display = 'none';
-      document.getElementById('btn-stop').style.display = 'none';
-    }
-  }, 1000);
-}
-
-function pausarCronometro() {
-  if (!cronometroRodando) return;
-  clearInterval(cronometroIntervalo);
-  cronometroRodando = false;
-
-  const btnIniciar = document.getElementById('btn-play');
-  btnIniciar.style.display = '';
-  btnIniciar.textContent = '▶ Continuar';
-  document.getElementById('btn-pause').style.display = 'none';
-}
-
-function reiniciarCronometro(total) {
-  pararCronometro();
-  cronometroSegundos = total;
-
-  const visor = document.getElementById('timer-display');
-  if (visor) {
-    visor.textContent = formatarTempo(total);
-    visor.style.color = 'var(--green)';
-  }
-
-  const btnIniciar = document.getElementById('btn-play');
-  if (btnIniciar) {
-    btnIniciar.style.display = '';
-    btnIniciar.textContent = '▶ Iniciar';
-    btnIniciar.onclick = () => iniciarCronometro(total);
-  }
-
-  const btnPausar = document.getElementById('btn-pause');
-  if (btnPausar) btnPausar.style.display = 'none';
-
-  const btnParar = document.getElementById('btn-stop');
-  if (btnParar) btnParar.style.display = 'none';
-}
-
-function reiniciarEIniciar(total) {
-  reiniciarCronometro(total);
-  iniciarCronometro(total);
-}
-
-function pararCronometro() {
-  if (cronometroIntervalo) clearInterval(cronometroIntervalo);
-  cronometroRodando = false;
-  cronometroSegundos = 0;
-}
-
-// ==========================================
-// CONCLUSÃO DO EXERCÍCIO
-// ==========================================
-function marcarConcluido(btn) {
-  // Registrar exercício como concluído
-  const chaveConcluido = exercicioAtualCat + ':' + exercicioAtualId;
-  exerciciosConcluidos.add(chaveConcluido);
-
-  // Feedback visual no botão
-  btn.classList.add('completed');
-  btn.textContent = '🎉 Muito bem! Exercício concluído!';
-  btn.disabled = true;
-
-  // Mostrar toast
-  const notificacao = document.getElementById('toast');
-  notificacao.classList.add('show');
-
-  // Após 1.5s, voltar à lista e mostrar progresso atualizado
-  setTimeout(() => {
-    notificacao.classList.remove('show');
-    pararCronometro();
-
-    if (detalheOrigem === 'plano') {
-      gerarPlano(); // Reconstruir plano com status atualizado
-      mostrarTela('plan');
-    } else {
-      renderizarCartoes(categoriaAtual);
-      mostrarTela('list');
-    }
-  }, 1500);
-}
+$("#library-fallback").hidden = true;
