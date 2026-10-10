@@ -5,3 +5,7 @@ test-results/
 .env.*
 !.env.example
 .DS_Store
+web/target/
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins-dependencies

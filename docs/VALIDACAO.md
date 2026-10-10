@@ -31,3 +31,9 @@ A prévia é desta implementação local; ela não demonstra publicação no end
 ## Automação remota
 
 O envio do workflow foi recusado pelo GitHub por ausência do escopo OAuth `workflow`. A configuração foi preservada como `docs/github-actions-ci.yml`, ainda não ativada. Não há resultado de CI remoto nesta entrega.
+
+## Validação do Trabalho Integrador (10/10/2026)
+
+Na instância OCI `web-db-01`, o WAR Java compilou com Maven e o fluxo HTTPS foi executado contra o banco SQLite da VM: login administrativo; criação e alteração de atividade; listagem pela API; criação, consulta, alteração de nome e cancelamento de inscrição; exclusão de atividade. A contagem de inscritos foi conferida após criação e cancelamento. Um segundo cadastro numa atividade com uma vaga retornou HTTP 400 e a contagem permaneceu em um. Registros de teste foram removidos.
+
+O app Flutter passou em `flutter analyze` sem problemas. O APK de release foi compilado, passou na verificação de integridade ZIP e a assinatura APK v2 foi validada por `apksigner`; pacote `br.edu.vitasenior.mobile`, versão `1.0.0`, Android mínimo 7.0 (API 24). SHA-256: `f1175f47bf6599df94b95531c78517fd6792ced189295af2947e52133e7d605a`. A execução em aparelho físico ainda precisa ser verificada. A versão de demonstração usa a chave de depuração padrão do Flutter.

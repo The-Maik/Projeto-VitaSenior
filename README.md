@@ -1,10 +1,20 @@
 # VitaSênior — Bem-estar no seu ritmo
 
-Aplicação web acadêmica de educação em bem-estar para pessoas idosas, reformulada a partir do projeto [The-Maik/Projeto-VitaSenior](https://github.com/The-Maik/Projeto-VitaSenior). Interface em português, responsiva, com biblioteca de leituras e referências verificáveis.
+Solução acadêmica de gestão de atividades educativas para pessoas idosas, evoluída a partir do projeto [The-Maik/Projeto-VitaSenior](https://github.com/The-Maik/Projeto-VitaSenior). Inclui biblioteca pública, administração Web em Java/JSP/Servlets, aplicativo Flutter e banco SQL relacional compartilhado.
 
 **Escopo desta versão:** demonstração acadêmica no Brasil. Não oferece avaliação de saúde, prescrição de exercícios, atendimento ou reabilitação. A definição de uso público/comercial e da instituição responsável ainda depende do mantenedor. Não é uma declaração de conformidade jurídica ou certificação clínica.
 
-## Executar
+## Trabalho integrador
+
+- **Web:** [`web/`](web/) — Java 17, JSP, Servlets e JDBC; login administrativo e CRUD de atividades.
+- **Mobile:** [`mobile/`](mobile/) — Flutter para Android; agenda, inscrição, consulta, alteração e cancelamento por código.
+- **Banco:** [`schema.sql`](web/src/main/resources/schema.sql) — SQLite com atividades e inscrições relacionadas, hospedado na instância Oracle Cloud.
+- **Documentação:** [descrição](docs/01-DESCRICAO-DO-PROJETO.md), [requisitos](docs/02-REQUISITOS.md) e [modelagem](docs/03-MODELAGEM-E-ESTRUTURA.md).
+- **Implantação:** [instruções OCI](deploy/README.md).
+
+O fluxo funcional completo é Web → banco → API → Mobile → banco → Web. O servidor não recebe dados de saúde; uma inscrição contém somente nome/apelido e código de reserva.
+
+## Executar a biblioteca localmente
 
 Requer Node.js 22 ou superior. Não há dependências de produção nem etapa de compilação.
 
@@ -16,14 +26,14 @@ Abra **http://127.0.0.1:4173**. Os módulos JavaScript precisam de HTTP; não ab
 
 Prévia visual: [desktop](docs/preview-desktop.png) · [celular](docs/preview-mobile.png). Veja o [registro de validação](docs/VALIDACAO.md).
 
-## O que funciona
+## Biblioteca educativa
 
 - Seis leituras educativas, organizadas por assunto, com busca que ignora acentos.
 - Favoritos e marcações de leitura somente em memória, descartados ao sair/recarregar.
 - Temporizador de pausa de leitura com início, pausa, retomada e reinício.
 - Texto ampliado, alto contraste, foco de teclado, modal acessível e movimento reduzido.
 - Privacidade, limites de uso e referências em páginas acessíveis também sem JavaScript.
-- Interface sem CDN, fonte remota, rastreadores, cookies, armazenamento persistente ou requisições de API.
+- A biblioteca não usa CDN, fonte remota, rastreadores, cookies, armazenamento persistente ou requisições de API. O módulo administrativo separado usa sessão e banco de dados.
 
 O filtro usa assunto e texto pesquisado; não infere condições de saúde. O progresso indica **leitura**, não realização de exercícios. O cronômetro não define séries ou ciclos respiratórios.
 
@@ -40,6 +50,8 @@ npm run test:e2e
 Em Linux, se faltarem bibliotecas do navegador: `npx playwright install --with-deps chromium`.
 
 Os testes verificam navegação, busca, favoritos, descarte de estado, cronômetro, modais, ausência de requisições externas, páginas informativas, dimensões móveis e verificações automatizadas de acessibilidade com axe. Isso não substitui testes manuais com pessoas idosas e leitores de tela, nem certificação WCAG.
+
+Para o módulo Java, execute `mvn -f web/pom.xml package`. Para o app, execute `flutter analyze` em `mobile/` e `flutter build apk`. A validação integrada na instância percorre cadastro, consulta, alteração e exclusão de atividade e inscrição.
 
 ### Automação de testes no GitHub
 
@@ -65,9 +77,7 @@ docs/                     Decisões, análise jurídica e roteiro de validação
 
 ## Publicação
 
-Os arquivos usam caminhos relativos, compatíveis com `/Projeto-VitaSenior/` no GitHub Pages. A versão reformulada não foi publicada automaticamente. Para uma demonstração autorizada, publique os arquivos HTML, `css/`, `js/`, `assets/` e `.nojekyll` em uma hospedagem estática HTTPS. O endereço histórico do projeto não implica que estas alterações já estejam nele.
-
-O GitHub Pages pode registrar IPs dos visitantes: a ausência de telemetria no aplicativo não significa ausência de tratamento pela hospedagem. Veja `privacidade.html` e [a documentação do GitHub](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages).
+A implantação está em [https://137.131.249.162.sslip.io/](https://137.131.249.162.sslip.io/), com [administração](https://137.131.249.162.sslip.io/vitasenior/admin/), [API](https://137.131.249.162.sslip.io/vitasenior/api/activities) e [APK Android](https://137.131.249.162.sslip.io/downloads/vitasenior.apk). Os dados do banco ficam na própria VM Oracle Cloud. A agenda contém uma atividade fictícia identificada para a demonstração acadêmica.
 
 Antes de oferecer a usuários reais, complete as decisões e revisões em [docs/REVISAO_JURIDICA.md](docs/REVISAO_JURIDICA.md). Uma futura versão clínica deve ter projeto e avaliação regulatória próprios; acrescentar um aviso não valida um algoritmo de prescrição.
 

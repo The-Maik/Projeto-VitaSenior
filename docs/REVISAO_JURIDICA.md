@@ -1,5 +1,7 @@
 # Revisão de escopo e pendências jurídicas
 
+> Revisão histórica da biblioteca estática de setembro de 2026. O módulo de inscrições acrescentado para o Trabalho Integrador em outubro de 2026 armazena nome/apelido, atividade e código na Oracle Cloud. Antes de uso com pessoas reais, a avaliação de privacidade e os documentos públicos precisam ser revisados para esse fluxo e para a instituição responsável.
+
 Data: 16/09/2026. Contexto presumido: demonstração acadêmica no Brasil, ainda sem confirmação de país de uso e operação pelo mantenedor. Este documento é uma análise técnica orientada por fontes oficiais, não um parecer jurídico nem garantia de conformidade.
 
 ## Problemas identificados na base

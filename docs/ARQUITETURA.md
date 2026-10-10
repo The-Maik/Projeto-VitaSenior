@@ -1,5 +1,7 @@
 # Decisões de implementação
 
+> Este documento descreve a biblioteca educativa. Para os novos módulos Web, Mobile e banco, consulte [a modelagem do Trabalho Integrador](03-MODELAGEM-E-ESTRUTURA.md).
+
 ## Aplicação estática
 
 A base já usava HTML, CSS e JavaScript. Mantivemos uma entrega estática, sem framework ou dependência de produção. Módulos separam conteúdo, domínio e DOM; um servidor HTTP é necessário para carregar módulos. Caminhos relativos permitem hospedagem em subdiretórios.
